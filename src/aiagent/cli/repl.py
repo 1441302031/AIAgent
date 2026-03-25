@@ -20,16 +20,18 @@ def run_repl() -> int:
     while True:
         try:
             prompt = input("aiagent> ")
+            normalized_prompt = prompt.strip()
+
+            if normalized_prompt.lower() in {"quit", "exit"}:
+                return 0
+            if not normalized_prompt:
+                continue
+
+            response = agent.run(AgentRequest(user_input=prompt))
         except EOFError:
             return 0
         except KeyboardInterrupt:
             print()
             return 0
 
-        if prompt.lower() in {"quit", "exit"}:
-            return 0
-        if not prompt.strip():
-            continue
-
-        response = agent.run(AgentRequest(user_input=prompt))
         print(response.final_text)

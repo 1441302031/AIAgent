@@ -23,13 +23,13 @@ PYTHONPATH=src python -m aiagent --repl
 
 ## Usage
 
-Run a single prompt:
+After `python -m pip install -e .`, run a single prompt:
 
 ```bash
 python -m aiagent "hello"
 ```
 
-Start the interactive REPL:
+After `python -m pip install -e .`, start the interactive REPL:
 
 ```bash
 python -m aiagent --repl
