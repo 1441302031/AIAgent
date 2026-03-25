@@ -2,21 +2,40 @@
 
 `aiagent` is a minimal, library-first Python agent project with a thin command-line interface for one-shot prompts and an interactive REPL.
 
+## Install and run
+
+This repository uses a `src` layout. For a fresh checkout, use one of these supported approaches:
+
+Install the project in editable mode, then run the console command:
+
+```bash
+python -m pip install -e .
+aiagent "hello"
+aiagent --repl
+```
+
+Or run directly from the checkout by setting `PYTHONPATH=src`:
+
+```bash
+PYTHONPATH=src python -m aiagent "hello"
+PYTHONPATH=src python -m aiagent --repl
+```
+
 ## Usage
 
 Run a single prompt:
 
 ```bash
-python -m aiagent "hello"
+aiagent "hello"
 ```
 
 Start the interactive REPL:
 
 ```bash
-python -m aiagent --repl
+aiagent --repl
 ```
 
-Exit the REPL with `quit` or `exit`.
+Exit the REPL with `quit`, `exit`, `Ctrl+C`, or `Ctrl+D` / EOF.
 
 ## Tests
 

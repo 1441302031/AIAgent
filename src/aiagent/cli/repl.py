@@ -22,6 +22,9 @@ def run_repl() -> int:
             prompt = input("aiagent> ")
         except EOFError:
             return 0
+        except KeyboardInterrupt:
+            print()
+            return 0
 
         if prompt.lower() in {"quit", "exit"}:
             return 0

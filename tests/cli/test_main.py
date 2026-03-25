@@ -48,3 +48,20 @@ def test_repl_exits_on_quit(monkeypatch, capsys):
 
     assert exit_code == 0
     assert "Mock echo: hello" in output
+
+
+def test_repl_exits_cleanly_on_keyboard_interrupt(monkeypatch, capsys):
+    monkeypatch.delenv("AIAGENT_PROVIDER", raising=False)
+    monkeypatch.delenv("AIAGENT_API_KEY", raising=False)
+    monkeypatch.delenv("AIAGENT_API_BASE", raising=False)
+    monkeypatch.delenv("AIAGENT_MODEL", raising=False)
+    monkeypatch.delenv("AIAGENT_TEMPERATURE", raising=False)
+    monkeypatch.delenv("AIAGENT_MOCK_MODE", raising=False)
+    monkeypatch.delenv("AIAGENT_MOCK_RESPONSE", raising=False)
+    monkeypatch.setattr("builtins.input", lambda _: (_ for _ in ()).throw(KeyboardInterrupt()))
+
+    exit_code = run_repl()
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert output == "\n"
