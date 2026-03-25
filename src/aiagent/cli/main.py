@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 
 from aiagent.agents.assistant import AssistantAgent
+from aiagent.cli.repl import run_repl
 from aiagent.config.settings import Settings
 from aiagent.domain.models import AgentRequest
 from aiagent.providers.factory import create_provider
@@ -16,8 +17,6 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.repl:
-        from aiagent.cli.repl import run_repl
-
         return run_repl()
 
     if not args.prompt:
