@@ -39,7 +39,7 @@ class MoonshotProvider:
         if 400 <= response.status_code:
             raise ProviderError(_error_message(response, f"Moonshot request failed with status {response.status_code}."))
 
-        body = response.json()
+        body = _parse_success_response(response)
         choice = body["choices"][0]["message"]
         return CompletionResponse(
             model=body.get("model", request.model or self.model),
@@ -59,3 +59,23 @@ def _error_message(response: httpx.Response, default: str) -> str:
         if isinstance(message, str) and message:
             return message
     return default
+
+
+def _parse_success_response(response: httpx.Response) -> dict:
+    try:
+        body = response.json()
+        choices = body["choices"]
+        choice = choices[0]
+        message = choice["message"]
+        role = message["role"]
+        content = message["content"]
+    except (ValueError, TypeError, KeyError, IndexError) as exc:
+        raise ProviderError("Moonshot returned an invalid success response.") from exc
+
+    if not isinstance(body, dict) or not isinstance(choices, list):
+        raise ProviderError("Moonshot returned an invalid success response.")
+    if not isinstance(choice, dict) or not isinstance(message, dict):
+        raise ProviderError("Moonshot returned an invalid success response.")
+    if not isinstance(role, str) or not isinstance(content, str):
+        raise ProviderError("Moonshot returned an invalid success response.")
+    return body
