@@ -6,12 +6,12 @@
 
 This repository uses a `src` layout. For a fresh checkout, use one of these supported approaches:
 
-Install the project in editable mode, then run the console command:
+Install the project in editable mode, then run the module:
 
 ```bash
 python -m pip install -e .
-aiagent "hello"
-aiagent --repl
+python -m aiagent "hello"
+python -m aiagent --repl
 ```
 
 Or run directly from the checkout by setting `PYTHONPATH=src`:
@@ -26,13 +26,13 @@ PYTHONPATH=src python -m aiagent --repl
 Run a single prompt:
 
 ```bash
-aiagent "hello"
+python -m aiagent "hello"
 ```
 
 Start the interactive REPL:
 
 ```bash
-aiagent --repl
+python -m aiagent --repl
 ```
 
 Exit the REPL with `quit`, `exit`, `Ctrl+C`, or `Ctrl+D` / EOF.
