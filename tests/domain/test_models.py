@@ -1,4 +1,11 @@
-from aiagent.domain.errors import ConfigurationError
+import aiagent.domain as domain
+from aiagent.domain.errors import (
+    AiAgentError,
+    AuthenticationError,
+    ConfigurationError,
+    ProviderError,
+    TransportError,
+)
 from aiagent.domain.models import (
     AgentRequest,
     AgentResponse,
@@ -53,3 +60,25 @@ def test_agent_response_defaults_collection_fields():
 def test_configuration_error_is_application_exception():
     error = ConfigurationError("missing key")
     assert str(error) == "missing key"
+
+
+def test_configuration_error_inherits_from_aiagent_error():
+    assert issubclass(ConfigurationError, AiAgentError)
+
+
+def test_provider_error_inherits_from_aiagent_error():
+    assert issubclass(ProviderError, AiAgentError)
+
+
+def test_authentication_error_inherits_from_provider_error():
+    assert issubclass(AuthenticationError, ProviderError)
+
+
+def test_transport_error_inherits_from_provider_error():
+    assert issubclass(TransportError, ProviderError)
+
+
+def test_domain_package_re_exports_public_types():
+    assert domain.ConfigurationError is ConfigurationError
+    assert domain.AgentRequest is AgentRequest
+    assert domain.Message is Message
