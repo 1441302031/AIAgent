@@ -5,9 +5,16 @@ from aiagent.providers.mock import MockProvider
 
 
 def test_provider_factory_returns_mock_provider_by_default():
-    settings = Settings.from_env({})
+    settings = Settings(
+        provider="mock",
+        model="mock-model",
+        mock_mode="scripted",
+        mock_response="factory response",
+    )
     provider = create_provider(settings)
     assert isinstance(provider, MockProvider)
+    assert provider.mode == "scripted"
+    assert provider.scripted_response == "factory response"
 
 
 def test_provider_factory_rejects_unsupported_provider():
