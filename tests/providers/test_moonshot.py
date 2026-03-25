@@ -82,6 +82,23 @@ def test_moonshot_provider_raises_provider_error_on_500():
         )
 
 
+def test_moonshot_provider_uses_default_error_message_for_non_object_error_json():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500, json=["oops"])
+
+    provider = MoonshotProvider(
+        api_key="secret",
+        model="moonshot-v1-8k",
+        base_url="https://api.moonshot.cn/v1",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(ProviderError, match="Moonshot request failed with status 500."):
+        provider.complete(
+            CompletionRequest(model="moonshot-v1-8k", messages=[Message(role="user", content="hello")])
+        )
+
+
 def test_moonshot_provider_raises_transport_error_on_http_failure():
     def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("boom", request=request)

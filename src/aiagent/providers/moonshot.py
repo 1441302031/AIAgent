@@ -53,6 +53,8 @@ def _error_message(response: httpx.Response, default: str) -> str:
         body = response.json()
     except ValueError:
         return default
+    if not isinstance(body, dict):
+        return default
     error = body.get("error")
     if isinstance(error, dict):
         message = error.get("message")
