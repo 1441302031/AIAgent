@@ -3,17 +3,29 @@ from aiagent.domain.errors import ConfigurationError
 
 from aiagent.providers.mock import MockProvider
 from aiagent.providers.moonshot import MoonshotProvider
+from aiagent.providers.registry import ProviderRegistry
+from aiagent.selection.static import StaticSelectionPolicy
 
 
 def create_provider(settings: Settings):
-    if settings.provider == "mock":
-        return MockProvider(mode=settings.mock_mode, scripted_response=settings.mock_response)
-    if settings.provider == "moonshot":
-        if not settings.api_key:
-            raise ConfigurationError("Moonshot provider requires an API key.")
-        return MoonshotProvider(
-            api_key=settings.api_key,
-            model=settings.model,
-            base_url=settings.api_base,
-        )
-    raise ConfigurationError(f"Unsupported provider: {settings.provider}")
+    registry = ProviderRegistry()
+    registry.register(
+        "mock",
+        lambda config: MockProvider(mode=config.mode, scripted_response=config.response),
+    )
+    registry.register("moonshot", lambda config: _build_moonshot_provider(settings, config))
+
+    provider_name = StaticSelectionPolicy().select_provider(settings.provider)
+    provider_config = settings.provider_configs.get(provider_name)
+    return registry.build(provider_name, provider_config)
+
+
+def _build_moonshot_provider(settings: Settings, config: object) -> MoonshotProvider:
+    api_key = getattr(config, "api_key", None)
+    if not api_key:
+        raise ConfigurationError("Moonshot provider requires an API key.")
+    return MoonshotProvider(
+        api_key=api_key,
+        model=settings.model,
+        base_url=getattr(config, "api_base"),
+    )
