@@ -121,16 +121,62 @@ python -m aiagent "hello"
 
 If `moonshot` is selected without an API key, the runtime raises a configuration error immediately instead of silently falling back to `mock`.
 
+## Provider 装配与选择
+
+当前 provider 运行链路已经从早期的硬编码分支，演进为 `registry + static selection` 的装配方式，但仍然是静态选择，不是动态调度。
+
+相关概念如下：
+
+- `ProviderConfig`
+- `provider_configs`
+- `StaticSelectionPolicy`
+- `ProviderRegistry`
+
+### `ProviderConfig` 与 `provider_configs`
+
+`Settings.from_env()` 会先读取环境变量，再通过 `build_provider_configs()` 生成 `provider_configs`。
+
+`provider_configs` 是一个静态映射，用来提前准备每个 provider 的配置对象：
+
+- `mock` 对应 `MockProviderConfig`
+- `moonshot` 对应 `MoonshotProviderConfig`
+
+这一步只负责把配置整理好，不负责决定最终运行哪个 provider。
+
+### `StaticSelectionPolicy`
+
+`StaticSelectionPolicy` 只负责静态选择 provider 名称。
+
+- 如果用户显式配置了 `AIAGENT_PROVIDER`，就使用该值
+- 如果没有配置，则默认返回 `mock`
+
+它不是动态路由器，也不做运行时切换、fallback、健康检查或 failover。
+
+### `ProviderRegistry`
+
+`ProviderRegistry` 负责把 provider 名称映射到具体构造器，再用对应配置实例化 provider。
+
+当前注册的 provider 仍然只有：
+
+- `mock`
+- `moonshot`
+
+如果名称未注册，registry 会抛出配置错误。
+
 ## Current Runtime Flow
 
-The current runtime flow is intentionally simple:
+当前运行链路可以理解为：
 
 1. CLI parses arguments
 2. `Settings` loads runtime configuration
-3. `create_provider()` selects a provider
-4. `SessionHistory` provides in-memory conversation state
-5. `AssistantAgent` assembles the prompt and calls the provider
-6. The final text is printed or returned
+3. `Settings` 构造 `provider_configs`
+4. `StaticSelectionPolicy` 选择 provider 名称，默认是 `mock`
+5. `ProviderRegistry` 按名称和配置创建 provider 实例
+6. `SessionHistory` 提供内存中的会话状态
+7. `AssistantAgent` 组装 prompt 并调用 provider
+8. 最终文本被打印或返回
+
+这条链路和早期“直接在工厂里硬编码分支”的方式相比，已经把 provider 选择和 provider 构造拆开了，但它仍然只是单次静态选择。
 
 The key code paths are:
 
@@ -138,6 +184,8 @@ The key code paths are:
 - `src/aiagent/cli/repl.py`
 - `src/aiagent/config/settings.py`
 - `src/aiagent/providers/factory.py`
+- `src/aiagent/providers/registry.py`
+- `src/aiagent/selection/static.py`
 - `src/aiagent/agents/assistant.py`
 - `src/aiagent/session/history.py`
 
@@ -397,6 +445,8 @@ If the next milestone is `subagent / multi-agent`, the most valuable immediate i
 4. verify the whole flow with `MockProvider`
 
 Once that works, Moonshot can be enabled by configuration instead of by redesign.
+
+下一阶段如果要继续演进 provider 能力，应该是动态切换或更复杂的策略层；但那仍然属于后续阶段，不是当前实现。
 
 ## Troubleshooting
 

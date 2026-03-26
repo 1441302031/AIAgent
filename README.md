@@ -58,6 +58,17 @@ Set configuration through environment variables:
 
 Optional variables used by the mock and runtime configuration include `AIAGENT_TEMPERATURE`, `AIAGENT_MOCK_MODE`, and `AIAGENT_MOCK_RESPONSE`.
 
+## Provider 架构
+
+当前的 provider 创建流程已经不再是单纯的硬编码分支，而是改成了 `registry + static selection` 的装配方式：
+
+1. `Settings` 先把环境变量整理成运行时配置
+2. `provider_configs` 预先构造各 provider 对应的静态配置
+3. `StaticSelectionPolicy` 只负责静态选择目标 provider
+4. `ProviderRegistry` 根据 provider 名称和配置实例化具体 provider
+
+默认 provider 仍然是 `mock`。当前这套流程只做静态选择，不包含动态切换、failover 或健康检查。
+
 ## More Documentation
 
 For a fuller usage and architecture guide, including `subagent` / `multi-agent` expansion guidance, see `docs/agent-guide.md`.
