@@ -63,7 +63,7 @@ Optional variables used by the mock and runtime configuration include `AIAGENT_T
 当前的 provider 创建流程已经不再是单纯的硬编码分支，而是改成了 `registry + static selection` 的装配方式：
 
 1. `Settings` 先把环境变量整理成运行时配置
-2. `provider_configs` 预先构造各 provider 对应的静态配置
+2. `Settings.provider_configs` 会基于当前 `Settings` 字段动态构造各 provider 对应的配置，每次访问都会重新计算
 3. `StaticSelectionPolicy` 只负责静态选择目标 provider
 4. `ProviderRegistry` 根据 provider 名称和配置实例化具体 provider
 

@@ -134,12 +134,12 @@ If `moonshot` is selected without an API key, the runtime raises a configuration
 
 ### `ProviderConfig` 与 `provider_configs`
 
-`Settings.from_env()` 会先读取环境变量，再通过 `build_provider_configs()` 生成 `provider_configs`。
+`Settings.from_env()` 会先读取环境变量，再在 `Settings` 上下文中组装出 `provider_configs`。
 
-`provider_configs` 是一个静态映射，用来提前准备每个 provider 的配置对象：
+`provider_configs` 是 `Settings.provider_configs` 的动态计算结果，会基于当前 `Settings` 字段构造每个 provider 的配置对象：
 
-- `mock` 对应 `MockProviderConfig`
-- `moonshot` 对应 `MoonshotProviderConfig`
+- `mock` 由当前 `Settings` 上下文派生为 `MockProviderConfig`
+- `moonshot` 由当前 `Settings` 上下文派生为 `MoonshotProviderConfig`
 
 这一步只负责把配置整理好，不负责决定最终运行哪个 provider。
 
@@ -169,7 +169,7 @@ If `moonshot` is selected without an API key, the runtime raises a configuration
 
 1. CLI parses arguments
 2. `Settings` loads runtime configuration
-3. `Settings` 构造 `provider_configs`
+3. `Settings.provider_configs` 基于当前字段派生配置
 4. `StaticSelectionPolicy` 选择 provider 名称，默认是 `mock`
 5. `ProviderRegistry` 按名称和配置创建 provider 实例
 6. `SessionHistory` 提供内存中的会话状态
