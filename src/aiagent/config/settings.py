@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from collections.abc import Mapping
 
+from aiagent.config.provider_config import ProviderConfigMap, build_provider_configs
 from aiagent.domain.errors import ConfigurationError
 
 
@@ -16,6 +17,15 @@ class Settings:
     api_base: str = "https://api.moonshot.cn/v1"
     mock_mode: str = "echo"
     mock_response: str = "Mock response"
+    provider_configs: ProviderConfigMap = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.provider_configs = build_provider_configs(
+            mock_mode=self.mock_mode,
+            mock_response=self.mock_response,
+            moonshot_api_key=self.api_key,
+            moonshot_api_base=self.api_base,
+        )
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Settings":

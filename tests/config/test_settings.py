@@ -12,6 +12,10 @@ def test_settings_default_to_mock_provider():
     assert settings.api_base == "https://api.moonshot.cn/v1"
     assert settings.mock_mode == "echo"
     assert settings.mock_response == "Mock response"
+    assert settings.provider_configs["mock"].mode == "echo"
+    assert settings.provider_configs["mock"].response == "Mock response"
+    assert settings.provider_configs["moonshot"].api_key is None
+    assert settings.provider_configs["moonshot"].api_base == "https://api.moonshot.cn/v1"
 
 
 def test_settings_require_api_key_for_moonshot():
