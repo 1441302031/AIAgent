@@ -55,3 +55,7 @@ Set configuration through environment variables:
 - `AIAGENT_MODEL`
 
 Optional variables used by the mock and runtime configuration include `AIAGENT_TEMPERATURE`, `AIAGENT_MOCK_MODE`, and `AIAGENT_MOCK_RESPONSE`.
+
+## More Documentation
+
+For a fuller usage and architecture guide, including `subagent` / `multi-agent` expansion guidance, see `docs/agent-guide.md`.
