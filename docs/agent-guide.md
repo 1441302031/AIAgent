@@ -37,6 +37,8 @@ Install in editable mode:
 python -m pip install -e .
 ```
 
+The install command must include the trailing `.`. `python -m pip install -e` is incomplete and will not install this checkout.
+
 Run a single prompt:
 
 ```bash
@@ -395,3 +397,25 @@ If the next milestone is `subagent / multi-agent`, the most valuable immediate i
 4. verify the whole flow with `MockProvider`
 
 Once that works, Moonshot can be enabled by configuration instead of by redesign.
+
+## Troubleshooting
+
+If `python -m aiagent` appears to do nothing or does not reflect this checkout, check which `aiagent` package Python is importing:
+
+```bash
+python -c "import aiagent; print(aiagent.__file__)"
+```
+
+If the path points to an older checkout or a stale worktree, reinstall from the current repository:
+
+```bash
+python -m pip uninstall -y aiagent
+python -m pip install -e .
+```
+
+For a direct source-based fallback, bypass installation entirely:
+
+```bash
+PYTHONPATH=src python -m aiagent "hello"
+PYTHONPATH=src python -m aiagent --repl
+```

@@ -14,6 +14,8 @@ python -m aiagent "hello"
 python -m aiagent --repl
 ```
 
+Note: the install command must include the trailing `.`. `python -m pip install -e` is incomplete and will not install this checkout.
+
 Or run directly from the checkout by setting `PYTHONPATH=src`:
 
 ```bash
@@ -59,3 +61,24 @@ Optional variables used by the mock and runtime configuration include `AIAGENT_T
 ## More Documentation
 
 For a fuller usage and architecture guide, including `subagent` / `multi-agent` expansion guidance, see `docs/agent-guide.md`.
+
+## Troubleshooting
+
+If `python -m aiagent` does not reflect the current checkout, verify which package Python is importing:
+
+```bash
+python -c "import aiagent; print(aiagent.__file__)"
+```
+
+If the printed path points at an older checkout or worktree, reinstall from the current repository:
+
+```bash
+python -m pip uninstall -y aiagent
+python -m pip install -e .
+```
+
+Then verify again:
+
+```bash
+python -c "import aiagent; print(aiagent.__file__)"
+```
