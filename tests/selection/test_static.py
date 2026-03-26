@@ -13,10 +13,10 @@ def test_static_selection_returns_default_mock_when_provider_missing():
     assert policy.select_provider(None) == "mock"
 
 
-def test_static_selection_returns_default_provider_when_configured_provider_is_empty():
+def test_static_selection_preserves_empty_string_provider():
     policy = StaticSelectionPolicy()
 
-    assert policy.select_provider("") == "mock"
+    assert policy.select_provider("") == ""
 
 
 def test_static_selection_returns_custom_default_provider_when_provider_missing():

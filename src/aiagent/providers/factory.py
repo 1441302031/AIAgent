@@ -17,6 +17,8 @@ def create_provider(settings: Settings):
 
     provider_name = StaticSelectionPolicy().select_provider(settings.provider)
     provider_config = settings.provider_configs.get(provider_name)
+    if provider_name in {"mock", "moonshot"} and provider_config is None:
+        raise ConfigurationError(f"Missing configuration for provider: {provider_name}")
     return registry.build(provider_name, provider_config)
 
 

@@ -120,3 +120,10 @@ def test_provider_factory_routes_moonshot_creation_through_selection_and_registr
     assert provider.model == "moonshot-v1-8k"
     assert selected == ["moonshot"]
     assert built == [("moonshot", settings.provider_configs["moonshot"])]
+
+
+def test_provider_factory_rejects_empty_provider_string():
+    settings = Settings(provider="", model="mock-model")
+
+    with pytest.raises(ConfigurationError, match="Unsupported provider"):
+        create_provider(settings)

@@ -38,3 +38,23 @@ def test_settings_rejects_invalid_temperature():
         assert "temperature" in str(exc).lower()
     else:
         raise AssertionError("Expected configuration error")
+
+
+def test_settings_provider_configs_reflect_field_updates():
+    settings = Settings(
+        provider="moonshot",
+        api_key="initial-key",
+        api_base="https://initial.example/v1",
+        mock_mode="echo",
+        mock_response="initial response",
+    )
+
+    settings.api_key = "updated-key"
+    settings.api_base = "https://updated.example/v1"
+    settings.mock_mode = "scripted"
+    settings.mock_response = "updated response"
+
+    assert settings.provider_configs["moonshot"].api_key == "updated-key"
+    assert settings.provider_configs["moonshot"].api_base == "https://updated.example/v1"
+    assert settings.provider_configs["mock"].mode == "scripted"
+    assert settings.provider_configs["mock"].response == "updated response"

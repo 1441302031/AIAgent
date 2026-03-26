@@ -3,6 +3,6 @@ class StaticSelectionPolicy:
         self._default_provider = default_provider
 
     def select_provider(self, configured_provider: str | None) -> str:
-        if configured_provider:
-            return configured_provider
-        return self._default_provider
+        if configured_provider is None:
+            return self._default_provider
+        return configured_provider
