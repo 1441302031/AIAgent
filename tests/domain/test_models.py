@@ -9,10 +9,12 @@ from aiagent.domain.errors import (
 from aiagent.domain.models import (
     AgentRequest,
     AgentResponse,
+    CompletionEvent,
     CompletionRequest,
     CompletionResponse,
     Message,
 )
+from aiagent.providers.base import CompletionProvider
 
 
 def test_message_defaults_metadata_to_empty_dict():
@@ -36,6 +38,12 @@ def test_completion_request_defaults_temperature_to_zero():
 def test_completion_response_defaults_raw_to_empty_dict():
     response = CompletionResponse(model="mock-model", message=Message(role="assistant", content="ok"))
     assert response.raw == {}
+
+
+def test_completion_event_defaults_text_to_empty_string():
+    event = CompletionEvent(kind="delta")
+    assert event.kind == "delta"
+    assert event.text == ""
 
 
 def test_agent_request_defaults_optional_fields():
@@ -82,3 +90,7 @@ def test_domain_package_re_exports_public_types():
     assert domain.ConfigurationError is ConfigurationError
     assert domain.AgentRequest is AgentRequest
     assert domain.Message is Message
+
+
+def test_completion_provider_exposes_stream_complete_protocol_method():
+    assert hasattr(CompletionProvider, "stream_complete")

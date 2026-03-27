@@ -2,7 +2,7 @@
 
 ## Overview
 
-`aiagent` currently provides a single-agent baseline built around a reusable Python library core plus a thin CLI shell. The default runtime uses a deterministic mock provider so the full request -> prompt assembly -> provider -> response flow works without any API key.
+`aiagent` currently provides a library-first Python agent core plus a thin CLI shell. The default runtime uses a deterministic mock provider so the full request -> prompt assembly -> provider -> response flow works without any API key.
 
 This guide serves two audiences:
 
@@ -16,6 +16,9 @@ The current implementation includes:
 - One-shot CLI execution
 - Interactive REPL mode
 - A structured `AssistantAgent`
+- A minimal `TaskRouter`
+- A focused `PlannerSubAgent`
+- A minimal `CoordinatorAgent`
 - In-memory session history
 - A mock provider for local development
 - A Moonshot-compatible provider adapter for later activation
@@ -27,8 +30,9 @@ The current implementation does not yet include:
 - Planner / executor loops
 - File editing tools
 - Long-term memory
-- Real subagent orchestration
-- Multi-agent routing and aggregation
+- Parallel multi-agent execution
+- Multi-agent retries or review loops
+- Rich specialist agent sets beyond the planner path
 
 ## Quick Start
 
@@ -52,6 +56,20 @@ Start the interactive REPL:
 python -m aiagent --repl
 ```
 
+Run the minimal multi-agent mode:
+
+```bash
+python -m aiagent --multi-agent "Please break this task into steps"
+python -m aiagent --repl --multi-agent
+```
+
+Show streamed output from the selected agent path:
+
+```bash
+python -m aiagent --multi-agent --show-subagents "Please break this task into steps"
+python -m aiagent --repl --multi-agent --show-subagents
+```
+
 Exit the REPL with:
 
 - `quit`
@@ -65,6 +83,7 @@ Run the env launcher directly from the checkout without installing:
 python tools/run_with_env.py mock --prompt "hello"
 python tools/run_with_env.py mock --repl
 python tools/run_with_env.py --env .env.deepseek --prompt "hello"
+python tools/run_with_env.py deepseek --prompt "Please break this task into steps"
 ```
 
 ## Env 启动器与配置模板
@@ -237,6 +256,9 @@ The key code paths are:
 - `src/aiagent/providers/registry.py`
 - `src/aiagent/selection/static.py`
 - `src/aiagent/agents/assistant.py`
+- `src/aiagent/agents/router.py`
+- `src/aiagent/agents/subagent.py`
+- `src/aiagent/agents/coordinator.py`
 - `src/aiagent/session/history.py`
 
 ## Core Architecture
@@ -449,6 +471,73 @@ Keep aggregation simple at first:
 
 Do not begin with parallel execution, retries, or dynamic graphs unless the single-path version is already stable.
 
+## Current Multi-Agent Behavior
+
+The current multi-agent path is intentionally small:
+
+1. CLI or Python caller enables multi-agent mode
+2. `TaskRouter` inspects the request
+3. Planning-like requests are delegated to `PlannerSubAgent`
+4. Other requests stay on the primary `AssistantAgent`
+5. `CoordinatorAgent` returns the final text and records a handoff when delegation happens
+
+The current router supports two paths:
+
+- `direct`
+- `planner`
+
+When `--show-subagents` is enabled, the CLI will stream a short label before the delegated output:
+
+- `[primary]` for the direct path
+- `[planner]` for the planner path
+
+The router can be influenced in two ways:
+
+- by prompt keywords such as `plan`, `steps`, `拆解`, `步骤`, `计划`
+- by explicit `AgentRequest.metadata["route"]`
+
+Example Python usage:
+
+```python
+from aiagent.agents.assistant import AssistantAgent
+from aiagent.agents.coordinator import CoordinatorAgent
+from aiagent.agents.router import TaskRouter
+from aiagent.agents.subagent import PlannerSubAgent
+from aiagent.config.settings import Settings
+from aiagent.domain.models import AgentRequest
+from aiagent.providers.factory import create_provider
+from aiagent.session.history import SessionHistory
+
+settings = Settings.from_env()
+provider = create_provider(settings)
+shared_history = SessionHistory()
+
+coordinator = CoordinatorAgent(
+    primary_agent=AssistantAgent(
+        provider=provider,
+        history=shared_history,
+        model=settings.model,
+        temperature=settings.temperature,
+    ),
+    planner_agent=PlannerSubAgent(
+        provider=provider,
+        history=shared_history,
+        model=settings.model,
+        temperature=settings.temperature,
+    ),
+    router=TaskRouter(),
+)
+
+response = coordinator.run(
+    AgentRequest(
+        user_input="请帮我拆解这个需求并输出步骤",
+        metadata={"route": "planner"},
+    )
+)
+print(response.final_text)
+print(response.handoffs)
+```
+
 ## Recommended Implementation Order
 
 To grow from the current single-agent baseline toward Cursor-like orchestration, use this order:
@@ -480,7 +569,7 @@ When possible, keep subagent tests deterministic by using scripted mock response
 
 - `main.py` and `repl.py` still duplicate some bootstrap wiring
 - current history is in-memory only
-- no streaming support exists yet
+- multi-agent mode currently streams the final aggregated text as a single chunk
 - no cancellation, retry, or timeout policy exists above the provider layer
 - no structured planner or tool protocol exists yet
 
@@ -488,16 +577,12 @@ These are normal constraints for a first baseline. The current architecture is g
 
 ## Recommended Next Step
 
-If the next milestone is `subagent / multi-agent`, the most valuable immediate implementation target is:
+Now that the minimal multi-agent path exists, the next most valuable steps are:
 
-1. add a `TaskRouter`
-2. add one `SubAgent`
-3. add a `CoordinatorAgent`
-4. verify the whole flow with `MockProvider`
-
-Once that works, Moonshot can be enabled by configuration instead of by redesign.
-
-下一阶段如果要继续演进 provider 能力，应该是动态切换或更复杂的策略层；但那仍然属于后续阶段，不是当前实现。
+1. add a second specialist subagent
+2. let `CoordinatorAgent` aggregate more than one delegated result
+3. add explicit CLI route controls instead of keyword-only routing
+4. keep the full flow verified with `MockProvider` before enabling richer real-provider orchestration
 
 ## Troubleshooting
 

@@ -23,6 +23,12 @@ class CompletionResponse:
 
 
 @dataclass(slots=True)
+class CompletionEvent:
+    kind: str
+    text: str = ""
+
+
+@dataclass(slots=True)
 class AgentRequest:
     user_input: str
     task_id: str | None = None

@@ -1,5 +1,7 @@
+from typing import Iterator
+
 from aiagent.agents.base import Agent
-from aiagent.domain.models import AgentRequest, AgentResponse, CompletionRequest, Message
+from aiagent.domain.models import AgentRequest, AgentResponse, CompletionEvent, CompletionRequest, Message
 from aiagent.prompts.system import DEFAULT_SYSTEM_PROMPT
 from aiagent.prompts.templates import build_messages
 from aiagent.providers.base import CompletionProvider
@@ -42,3 +44,36 @@ class AssistantAgent(Agent):
             final_text=assistant_message.content,
             messages=[user_message, assistant_message],
         )
+
+    def run_stream(self, request: AgentRequest) -> Iterator[CompletionEvent]:
+        user_message = Message(role="user", content=request.user_input)
+        messages = build_messages(
+            system_prompt=self._system_prompt,
+            history=self._history.all(),
+            user_input=request.user_input,
+        )
+        assistant_content = ""
+        failed = False
+        try:
+            for event in self._provider.stream_complete(
+                CompletionRequest(
+                    model=self._model,
+                    messages=messages,
+                    temperature=self._temperature,
+                )
+            ):
+                if event.kind == "content":
+                    assistant_content += event.text
+                    yield event
+                elif event.kind == "done":
+                    yield event
+                    break
+        except Exception:
+            self._history.add(user_message)
+            failed = True
+            raise
+        finally:
+            if not failed:
+                assistant_message = Message(role="assistant", content=assistant_content)
+                self._history.add(user_message)
+                self._history.add(assistant_message)

@@ -92,15 +92,39 @@ def test_parse_env_file_rejects_invalid_line(tmp_path: Path):
 
 
 def test_build_aiagent_command_builds_one_shot_command():
-    command = load_target().build_aiagent_command("python", prompt="hello", repl=False)
+    command = load_target().build_aiagent_command("python", prompt="hello", repl=False, multi_agent=False)
 
     assert command == ["python", "-m", "aiagent", "hello"]
 
 
 def test_build_aiagent_command_builds_repl_command():
-    command = load_target().build_aiagent_command("python", prompt=None, repl=True)
+    command = load_target().build_aiagent_command("python", prompt=None, repl=True, multi_agent=False)
 
     assert command == ["python", "-m", "aiagent", "--repl"]
+
+
+def test_build_aiagent_command_builds_multi_agent_one_shot_command():
+    command = load_target().build_aiagent_command("python", prompt="hello", repl=False, multi_agent=True)
+
+    assert command == ["python", "-m", "aiagent", "--multi-agent", "hello"]
+
+
+def test_build_aiagent_command_builds_multi_agent_repl_command():
+    command = load_target().build_aiagent_command("python", prompt=None, repl=True, multi_agent=True)
+
+    assert command == ["python", "-m", "aiagent", "--repl", "--multi-agent"]
+
+
+def test_build_aiagent_command_builds_show_subagents_command():
+    command = load_target().build_aiagent_command(
+        "python",
+        prompt="hello",
+        repl=False,
+        multi_agent=True,
+        show_subagents=True,
+    )
+
+    assert command == ["python", "-m", "aiagent", "--multi-agent", "--show-subagents", "hello"]
 
 
 def test_build_verbose_summary_redacts_sensitive_values():

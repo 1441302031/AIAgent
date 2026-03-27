@@ -52,12 +52,29 @@ def build_runtime_mode(prompt: str | None, repl: bool) -> str:
     return "repl" if repl else "prompt"
 
 
-def build_aiagent_command(python_executable: str, prompt: str | None, repl: bool) -> list[str]:
+def build_aiagent_command(
+    python_executable: str,
+    prompt: str | None,
+    repl: bool,
+    multi_agent: bool,
+    show_subagents: bool = False,
+) -> list[str]:
     if repl:
-        return [python_executable, "-m", "aiagent", "--repl"]
+        command = [python_executable, "-m", "aiagent", "--repl"]
+        if multi_agent:
+            command.append("--multi-agent")
+        if show_subagents:
+            command.append("--show-subagents")
+        return command
     if prompt is None:
         raise ValueError("Prompt is required unless repl is enabled.")
-    return [python_executable, "-m", "aiagent", prompt]
+    command = [python_executable, "-m", "aiagent"]
+    if multi_agent:
+        command.append("--multi-agent")
+    if show_subagents:
+        command.append("--show-subagents")
+    command.append(prompt)
+    return command
 
 
 def build_verbose_summary(
@@ -81,6 +98,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--env")
     parser.add_argument("--prompt")
     parser.add_argument("--repl", action="store_true")
+    parser.add_argument("--multi-agent", action="store_true")
+    parser.add_argument("--show-subagents", action="store_true")
     parser.add_argument("--list", action="store_true")
     parser.add_argument("--verbose", action="store_true")
     return parser
@@ -123,7 +142,13 @@ def main(argv: list[str] | None = None) -> int:
     except (ValueError, FileNotFoundError) as exc:
         parser.error(str(exc))
 
-    command = build_aiagent_command(sys.executable, args.prompt, args.repl)
+    command = build_aiagent_command(
+        sys.executable,
+        args.prompt,
+        args.repl,
+        args.multi_agent,
+        args.show_subagents,
+    )
     child_env = build_child_env(project_root, env_values)
 
     if args.verbose:

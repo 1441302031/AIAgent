@@ -30,6 +30,41 @@ def test_mock_provider_returns_scripted_response():
     assert response.message.content == "ready"
 
 
+def test_mock_provider_streams_echo_response_as_content_and_done_events():
+    provider = MockProvider(mode="echo", scripted_response="ignored")
+
+    events = list(
+        provider.stream_complete(
+            CompletionRequest(
+                model="mock-model",
+                messages=[
+                    Message(role="system", content="be brief"),
+                    Message(role="user", content="hello world"),
+                ],
+            )
+        )
+    )
+
+    assert [event.kind for event in events] == ["content", "done"]
+    assert "".join(event.text for event in events if event.kind == "content") == "Mock echo: hello world"
+
+
+def test_mock_provider_streams_scripted_response_as_content_and_done_events():
+    provider = MockProvider(mode="scripted", scripted_response="hello")
+
+    events = list(
+        provider.stream_complete(
+            CompletionRequest(
+                model="mock-model",
+                messages=[Message(role="user", content="ignored")],
+            )
+        )
+    )
+
+    assert [event.kind for event in events] == ["content", "done"]
+    assert "".join(event.text for event in events if event.kind == "content") == "hello"
+
+
 def test_mock_provider_rejects_invalid_mode():
     try:
         MockProvider(mode="unsupported", scripted_response="ignored")

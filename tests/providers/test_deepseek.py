@@ -8,6 +8,152 @@ from aiagent.domain.models import CompletionRequest, Message
 from aiagent.providers.deepseek import DeepSeekProvider
 
 
+def test_deepseek_provider_streams_sse_content_and_done_events():
+    sent = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent["body"] = request.read().decode()
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            content=(
+                b'data: {"model":"deepseek-chat","choices":[{"delta":{"content":"Hel"}}]}\n\n'
+                b'data: {"model":"deepseek-chat","choices":[{"delta":{"content":""}}]}\n\n'
+                b'data: {"model":"deepseek-chat","choices":[{"delta":{"content":"lo"}}]}\n\n'
+                b"data: [DONE]\n\n"
+            ),
+        )
+
+    provider = DeepSeekProvider(
+        api_key="secret",
+        model="deepseek-chat",
+        base_url="https://api.deepseek.com",
+        transport=httpx.MockTransport(handler),
+    )
+
+    events = list(
+        provider.stream_complete(
+            CompletionRequest(
+                model="deepseek-chat",
+                messages=[Message(role="user", content="hello")],
+                temperature=0.25,
+            )
+        )
+    )
+
+    body = json.loads(sent["body"])
+    assert body["stream"] is True
+    assert [event.kind for event in events] == ["content", "content", "done"]
+    assert [event.text for event in events if event.kind == "content"] == ["Hel", "lo"]
+
+
+def test_deepseek_provider_ignores_keep_alive_reasoning_and_usage_only_stream_chunks():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            content=(
+                b": keep-alive\n\n"
+                b'data: {"model":"deepseek-reasoner","choices":[{"delta":{"reasoning_content":"thinking","content":null}}]}\n\n'
+                b'data: {"model":"deepseek-reasoner","choices":[],"usage":{"prompt_tokens":1,"completion_tokens":1}}\n\n'
+                b'data: {"model":"deepseek-reasoner","choices":[{"delta":{"content":"Answer"}}]}\n\n'
+                b"data: [DONE]\n\n"
+            ),
+        )
+
+    provider = DeepSeekProvider(
+        api_key="secret",
+        model="deepseek-reasoner",
+        base_url="https://api.deepseek.com",
+        transport=httpx.MockTransport(handler),
+    )
+
+    events = list(
+        provider.stream_complete(
+            CompletionRequest(
+                model="deepseek-reasoner",
+                messages=[Message(role="user", content="hello")],
+            )
+        )
+    )
+
+    assert [event.kind for event in events] == ["content", "done"]
+    assert [event.text for event in events if event.kind == "content"] == ["Answer"]
+
+
+def test_deepseek_provider_raises_provider_error_on_malformed_stream_chunk():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            content=b"data: {\"model\":\"deepseek-chat\",\"choices\":[{\"delta\":123}]}\n\n",
+        )
+
+    provider = DeepSeekProvider(
+        api_key="secret",
+        model="deepseek-chat",
+        base_url="https://api.deepseek.com",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(ProviderError, match="DeepSeek returned an invalid streaming response."):
+        list(
+            provider.stream_complete(
+                CompletionRequest(model="deepseek-chat", messages=[Message(role="user", content="hello")])
+            )
+        )
+
+
+def test_deepseek_provider_raises_provider_error_when_stream_ends_before_done():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            content=b'data: {"model":"deepseek-chat","choices":[{"delta":{"content":"Hel"}}]}\n\n',
+        )
+
+    provider = DeepSeekProvider(
+        api_key="secret",
+        model="deepseek-chat",
+        base_url="https://api.deepseek.com",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(ProviderError, match="DeepSeek streaming response ended before \\[DONE\\]."):
+        list(
+            provider.stream_complete(
+                CompletionRequest(model="deepseek-chat", messages=[Message(role="user", content="hello")])
+            )
+        )
+
+
+def test_deepseek_provider_raises_transport_error_on_stream_failure():
+    class FailingStream(httpx.SyncByteStream):
+        def __iter__(self):
+            yield b'data: {"model":"deepseek-chat","choices":[{"delta":{"content":"Hel"}}]}\n\n'
+            raise httpx.ReadError("boom", request=httpx.Request("POST", "https://api.deepseek.com/chat/completions"))
+
+        def close(self) -> None:
+            pass
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, stream=FailingStream())
+
+    provider = DeepSeekProvider(
+        api_key="secret",
+        model="deepseek-chat",
+        base_url="https://api.deepseek.com",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(TransportError):
+        list(
+            provider.stream_complete(
+                CompletionRequest(model="deepseek-chat", messages=[Message(role="user", content="hello")])
+            )
+        )
+
+
 def test_deepseek_provider_sends_chat_completion_payload():
     sent = {}
 
