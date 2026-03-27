@@ -49,14 +49,39 @@ python -B -m pytest -p no:cacheprovider -v
 
 ## Configuration
 
-Set configuration through environment variables:
+通过环境变量配置运行时行为：
 
-- `AIAGENT_PROVIDER`
-- `AIAGENT_API_KEY`
-- `AIAGENT_API_BASE`
-- `AIAGENT_MODEL`
+- 通用变量：
+  - `AIAGENT_PROVIDER`
+  - `AIAGENT_MODEL`
+  - `AIAGENT_TEMPERATURE`
+- Mock provider：
+  - `AIAGENT_MOCK_MODE`
+  - `AIAGENT_MOCK_RESPONSE`
+- Moonshot provider：
+  - `AIAGENT_API_KEY`
+  - `AIAGENT_API_BASE`
+- DeepSeek provider：
+  - `AIAGENT_DEEPSEEK_API_KEY`
+  - `AIAGENT_DEEPSEEK_API_BASE`
 
-Optional variables used by the mock and runtime configuration include `AIAGENT_TEMPERATURE`, `AIAGENT_MOCK_MODE`, and `AIAGENT_MOCK_RESPONSE`.
+其中 `AIAGENT_PROVIDER` 默认是 `mock`。当前 `moonshot` 与 `deepseek` 都使用各自专属的 API 配置，不会静默共用同一组 key。
+
+### DeepSeek 配置示例
+
+```bash
+AIAGENT_PROVIDER=deepseek
+AIAGENT_MODEL=deepseek-chat
+AIAGENT_DEEPSEEK_API_KEY=your-key
+AIAGENT_DEEPSEEK_API_BASE=https://api.deepseek.com
+python -m aiagent "hello"
+```
+
+如果你不想安装项目，也可以直接从源码目录运行：
+
+```bash
+PYTHONPATH=src AIAGENT_PROVIDER=deepseek AIAGENT_MODEL=deepseek-chat AIAGENT_DEEPSEEK_API_KEY=your-key AIAGENT_DEEPSEEK_API_BASE=https://api.deepseek.com python -m aiagent "hello"
+```
 
 ## Provider 架构
 

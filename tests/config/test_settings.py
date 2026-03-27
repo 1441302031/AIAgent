@@ -27,8 +27,32 @@ def test_settings_require_api_key_for_moonshot():
         raise AssertionError("Expected configuration error")
 
 
+def test_settings_read_deepseek_configuration_from_dedicated_env_vars():
+    settings = Settings.from_env(
+        {
+            "AIAGENT_PROVIDER": "deepseek",
+            "AIAGENT_DEEPSEEK_API_KEY": "secret",
+            "AIAGENT_DEEPSEEK_API_BASE": "https://api.deepseek.com",
+        }
+    )
+
+    assert settings.provider == "deepseek"
+    assert settings.provider_configs["deepseek"].api_key == "secret"
+    assert settings.provider_configs["deepseek"].api_base == "https://api.deepseek.com"
+
+
+def test_settings_require_api_key_for_deepseek():
+    try:
+        Settings.from_env({"AIAGENT_PROVIDER": "deepseek"})
+    except ConfigurationError as exc:
+        assert "api key" in str(exc).lower()
+    else:
+        raise AssertionError("Expected configuration error")
+
+
 def test_settings_re_exported_from_config_package():
     assert config.Settings is Settings
+    assert config.DeepSeekProviderConfig is not None
 
 
 def test_settings_rejects_invalid_temperature():

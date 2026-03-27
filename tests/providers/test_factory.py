@@ -4,6 +4,7 @@ from aiagent.config.settings import Settings
 from aiagent.domain.errors import ConfigurationError
 from aiagent.providers import factory
 from aiagent.providers.factory import create_provider
+from aiagent.providers.deepseek import DeepSeekProvider
 from aiagent.providers.mock import MockProvider
 from aiagent.providers.moonshot import MoonshotProvider
 
@@ -57,6 +58,66 @@ def test_provider_factory_routes_mock_creation_through_selection_and_registry(mo
     assert provider.scripted_response == "factory response"
     assert selected == ["mock"]
     assert built == [("mock", settings.provider_configs["mock"])]
+
+
+def test_provider_factory_builds_deepseek_provider():
+    settings = Settings.from_env(
+        {
+            "AIAGENT_PROVIDER": "deepseek",
+            "AIAGENT_DEEPSEEK_API_KEY": "secret",
+            "AIAGENT_MODEL": "deepseek-chat",
+        }
+    )
+    provider = create_provider(settings)
+    assert isinstance(provider, DeepSeekProvider)
+
+
+def test_provider_factory_routes_deepseek_creation_through_selection_and_registry(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    settings = Settings.from_env(
+        {
+            "AIAGENT_PROVIDER": "deepseek",
+            "AIAGENT_DEEPSEEK_API_KEY": "secret",
+            "AIAGENT_MODEL": "deepseek-chat",
+        }
+    )
+    selected: list[str | None] = []
+    built: list[tuple[str, object]] = []
+
+    class FakeSelectionPolicy:
+        def select_provider(self, configured_provider: str | None) -> str:
+            selected.append(configured_provider)
+            return "deepseek"
+
+    class FakeRegistry:
+        def __init__(self) -> None:
+            self._builders: dict[str, object] = {}
+
+        def register(self, name: str, builder: object) -> None:
+            self._builders[name] = builder
+
+        def build(self, name: str, config: object) -> object:
+            built.append((name, config))
+            return self._builders[name](config)
+
+    monkeypatch.setattr(factory, "StaticSelectionPolicy", FakeSelectionPolicy)
+    monkeypatch.setattr(factory, "ProviderRegistry", FakeRegistry)
+
+    provider = create_provider(settings)
+
+    assert isinstance(provider, DeepSeekProvider)
+    assert provider.api_key == "secret"
+    assert provider.model == "deepseek-chat"
+    assert selected == ["deepseek"]
+    assert built == [("deepseek", settings.provider_configs["deepseek"])]
+
+
+def test_provider_factory_rejects_missing_deepseek_api_key():
+    settings = Settings(provider="deepseek", model="mock-model")
+
+    with pytest.raises(ConfigurationError, match="DeepSeek provider requires an API key"):
+        create_provider(settings)
 
 
 def test_provider_factory_rejects_unsupported_provider():

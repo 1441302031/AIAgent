@@ -19,6 +19,7 @@ The current implementation includes:
 - In-memory session history
 - A mock provider for local development
 - A Moonshot-compatible provider adapter for later activation
+- A DeepSeek provider adapter for real chat-completion calls
 
 The current implementation does not yet include:
 
@@ -120,6 +121,29 @@ python -m aiagent "hello"
 ```
 
 If `moonshot` is selected without an API key, the runtime raises a configuration error immediately instead of silently falling back to `mock`.
+
+### DeepSeek 模式
+
+DeepSeek adapter 现在已经接入，启用时使用 DeepSeek 专属环境变量，而不是复用 Moonshot 的配置键。
+
+示例：
+
+```bash
+AIAGENT_PROVIDER=deepseek
+AIAGENT_MODEL=deepseek-chat
+AIAGENT_DEEPSEEK_API_KEY=your-key
+AIAGENT_DEEPSEEK_API_BASE=https://api.deepseek.com
+python -m aiagent "hello"
+```
+
+如果选择了 `deepseek` 但没有提供 `AIAGENT_DEEPSEEK_API_KEY`，运行时会立即抛出配置错误，不会静默回退到 `mock`。
+
+当前 DeepSeek 接入范围：
+
+- 通过 `Settings` 读取专属环境变量
+- 通过 `ProviderRegistry + StaticSelectionPolicy + factory` 完成装配
+- 通过 `DeepSeekProvider` 调用 `/chat/completions`
+- 支持 one-shot CLI 与 REPL 复用同一套 provider 装配逻辑
 
 ## Provider 装配与选择
 

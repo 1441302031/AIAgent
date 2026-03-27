@@ -15,6 +15,8 @@ class Settings:
     temperature: float = 0.0
     api_key: str | None = None
     api_base: str = "https://api.moonshot.cn/v1"
+    deepseek_api_key: str | None = None
+    deepseek_api_base: str = "https://api.deepseek.com"
     mock_mode: str = "echo"
     mock_response: str = "Mock response"
 
@@ -25,6 +27,8 @@ class Settings:
             mock_response=self.mock_response,
             moonshot_api_key=self.api_key,
             moonshot_api_base=self.api_base,
+            deepseek_api_key=self.deepseek_api_key,
+            deepseek_api_base=self.deepseek_api_base,
         )
 
     @classmethod
@@ -41,9 +45,15 @@ class Settings:
             temperature=temperature,
             api_key=source.get("AIAGENT_API_KEY"),
             api_base=source.get("AIAGENT_API_BASE", "https://api.moonshot.cn/v1"),
+            deepseek_api_key=source.get("AIAGENT_DEEPSEEK_API_KEY"),
+            deepseek_api_base=source.get(
+                "AIAGENT_DEEPSEEK_API_BASE", "https://api.deepseek.com"
+            ),
             mock_mode=source.get("AIAGENT_MOCK_MODE", "echo"),
             mock_response=source.get("AIAGENT_MOCK_RESPONSE", "Mock response"),
         )
         if settings.provider == "moonshot" and not settings.api_key:
             raise ConfigurationError("Moonshot provider requires an API key.")
+        if settings.provider == "deepseek" and not settings.deepseek_api_key:
+            raise ConfigurationError("DeepSeek provider requires an API key.")
         return settings
