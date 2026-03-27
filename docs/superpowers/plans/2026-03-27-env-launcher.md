@@ -84,7 +84,35 @@ def test_resolve_env_file_supports_builtin_provider_names():
     assert resolve_env_file(project_root, provider_name="moonshot", explicit_env=None).name == ".env.moonshot"
 ```
 
-- [ ] **Step 3: 编写模式冲突与缺失校验测试**
+- [ ] **Step 3: 编写不支持 provider 的失败测试**
+
+```python
+import pytest
+
+from tools.run_with_env import resolve_env_file
+
+
+def test_resolve_env_file_rejects_unknown_provider():
+    with pytest.raises(ValueError, match="Unsupported provider"):
+        resolve_env_file(Path("J:/Codex_Project/AIAgent"), provider_name="unknown", explicit_env=None)
+```
+
+- [ ] **Step 4: 编写缺失 env 文件的失败测试**
+
+```python
+import pytest
+
+from tools.run_with_env import ensure_env_file_exists
+
+
+def test_ensure_env_file_exists_rejects_missing_file(tmp_path: Path):
+    missing = tmp_path / ".env.missing"
+
+    with pytest.raises(FileNotFoundError, match=str(missing.name)):
+        ensure_env_file_exists(missing)
+```
+
+- [ ] **Step 5: 编写模式冲突与缺失校验测试**
 
 ```python
 import pytest
@@ -102,7 +130,23 @@ def test_build_runtime_mode_rejects_conflicting_modes():
         build_runtime_mode(prompt="hi", repl=True)
 ```
 
-- [ ] **Step 4: 编写 one-shot 与 REPL 命令构造测试**
+- [ ] **Step 6: 编写非法 `.env` 行的失败测试**
+
+```python
+import pytest
+
+from tools.run_with_env import parse_env_file
+
+
+def test_parse_env_file_rejects_invalid_line(tmp_path: Path):
+    env_file = tmp_path / ".env.bad"
+    env_file.write_text("AIAGENT_PROVIDER=deepseek\nINVALID_LINE\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Invalid .env line"):
+        parse_env_file(env_file)
+```
+
+- [ ] **Step 7: 编写 one-shot 与 REPL 命令构造测试**
 
 ```python
 from tools.run_with_env import build_aiagent_command
@@ -118,12 +162,34 @@ def test_build_aiagent_command_for_repl():
     assert command == ["C:/Python314/python.exe", "-m", "aiagent", "--repl"]
 ```
 
-- [ ] **Step 5: 运行测试，确认红灯**
+- [ ] **Step 8: 编写 `--verbose` 输出测试**
+
+```python
+from tools.run_with_env import build_verbose_summary
+
+
+def test_build_verbose_summary_redacts_sensitive_values():
+    summary = build_verbose_summary(
+        env_file=".env.deepseek",
+        mode="prompt",
+        provider_name="deepseek",
+        env_values={
+            "AIAGENT_PROVIDER": "deepseek",
+            "AIAGENT_DEEPSEEK_API_KEY": "secret",
+        },
+    )
+
+    assert ".env.deepseek" in summary
+    assert "deepseek" in summary
+    assert "secret" not in summary
+```
+
+- [ ] **Step 9: 运行测试，确认红灯**
 
 Run: `python -B -m pytest -p no:cacheprovider tests/tools/test_run_with_env.py -v`
 Expected: FAIL，提示 `tools.run_with_env` 不存在或目标函数未定义
 
-- [ ] **Step 6: 提交测试骨架**
+- [ ] **Step 10: 提交测试骨架**
 
 ```bash
 git add tests/tools/test_run_with_env.py
@@ -170,7 +236,16 @@ def resolve_env_file(project_root: Path, provider_name: str | None, explicit_env
     return project_root / BUILTIN_ENV_FILES[provider_name]
 ```
 
-- [ ] **Step 3: 实现模式校验与命令构造**
+- [ ] **Step 3: 实现 env 文件存在性校验**
+
+```python
+def ensure_env_file_exists(path: Path) -> Path:
+    if not path.is_file():
+        raise FileNotFoundError(f"Environment file not found: {path}")
+    return path
+```
+
+- [ ] **Step 4: 实现模式校验与命令构造**
 
 ```python
 def build_runtime_mode(prompt: str | None, repl: bool) -> str:
@@ -185,7 +260,42 @@ def build_aiagent_command(python_executable: str, prompt: str | None, repl: bool
     return [python_executable, "-m", "aiagent", prompt or ""]
 ```
 
-- [ ] **Step 4: 实现 CLI 主入口**
+- [ ] **Step 5: 实现参数解析器**
+
+```python
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("provider", nargs="?")
+    parser.add_argument("--env")
+    parser.add_argument("--prompt")
+    parser.add_argument("--repl", action="store_true")
+    parser.add_argument("--list", action="store_true")
+    parser.add_argument("--verbose", action="store_true")
+    return parser
+```
+
+- [ ] **Step 6: 实现敏感信息脱敏的 verbose 摘要**
+
+```python
+def build_verbose_summary(
+    *,
+    env_file: str,
+    mode: str,
+    provider_name: str | None,
+    env_values: dict[str, str],
+) -> str:
+    keys = ", ".join(sorted(key for key in env_values if "KEY" not in key))
+    return f"env={env_file} provider={provider_name or '<custom>'} mode={mode} keys={keys}"
+```
+
+- [ ] **Step 7: 实现子进程调用函数**
+
+```python
+def run_aiagent(command: list[str], child_env: dict[str, str], cwd: Path) -> int:
+    return subprocess.run(command, env=child_env, cwd=cwd).returncode
+```
+
+- [ ] **Step 8: 实现 CLI 主入口**
 
 ```python
 def main(argv: list[str] | None = None) -> int:
@@ -198,20 +308,30 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     project_root = Path(__file__).resolve().parent.parent
-    env_file = resolve_env_file(project_root, args.provider, args.env)
+    env_file = ensure_env_file_exists(resolve_env_file(project_root, args.provider, args.env))
+    mode = build_runtime_mode(args.prompt, args.repl)
     env_values = parse_env_file(env_file)
     command = build_aiagent_command(sys.executable, args.prompt, args.repl)
     child_env = os.environ.copy()
     child_env.update(env_values)
-    return subprocess.run(command, env=child_env, cwd=project_root).returncode
+    if args.verbose:
+        print(
+            build_verbose_summary(
+                env_file=str(env_file),
+                mode=mode,
+                provider_name=args.provider,
+                env_values=env_values,
+            )
+        )
+    return run_aiagent(command, child_env, project_root)
 ```
 
-- [ ] **Step 5: 运行启动器测试，确认转绿**
+- [ ] **Step 9: 运行启动器测试，确认转绿**
 
 Run: `python -B -m pytest -p no:cacheprovider tests/tools/test_run_with_env.py -v`
 Expected: PASS
 
-- [ ] **Step 6: 提交启动器实现**
+- [ ] **Step 10: 提交启动器实现**
 
 ```bash
 git add tools/run_with_env.py tests/tools/test_run_with_env.py
@@ -302,6 +422,7 @@ git commit -m "chore: add env launcher templates"
 - `python tools/run_with_env.py deepseek --prompt "你好"`
 - `python tools/run_with_env.py deepseek --repl`
 - `python tools/run_with_env.py --env .env.deepseek --prompt "你好"`
+- `python tools/run_with_env.py deepseek --prompt "你好" --verbose`
 - 模板文件说明
 - 真实 key 不要直接写进模板文件
 
@@ -311,6 +432,7 @@ git commit -m "chore: add env launcher templates"
 
 - provider 名称映射
 - `--prompt` / `--repl` 的显式模式设计
+- `--verbose` 只展示安全摘要，不打印敏感值
 - 推荐把真实配置保存到本地未跟踪 env 文件
 
 - [ ] **Step 3: 做文档自检**
