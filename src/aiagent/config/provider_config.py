@@ -15,7 +15,16 @@ class MoonshotProviderConfig:
     api_base: str
 
 
-ProviderConfigMap = dict[str, MockProviderConfig | MoonshotProviderConfig]
+@dataclass(frozen=True, slots=True)
+class DeepSeekProviderConfig:
+    api_key: str | None
+    api_base: str
+
+
+ProviderConfigMap = dict[
+    str,
+    MockProviderConfig | MoonshotProviderConfig | DeepSeekProviderConfig,
+]
 
 
 def build_provider_configs(
@@ -24,11 +33,17 @@ def build_provider_configs(
     mock_response: str,
     moonshot_api_key: str | None,
     moonshot_api_base: str,
+    deepseek_api_key: str | None = None,
+    deepseek_api_base: str = "https://api.deepseek.com",
 ) -> ProviderConfigMap:
     return {
         "mock": MockProviderConfig(mode=mock_mode, response=mock_response),
         "moonshot": MoonshotProviderConfig(
             api_key=moonshot_api_key,
             api_base=moonshot_api_base,
+        ),
+        "deepseek": DeepSeekProviderConfig(
+            api_key=deepseek_api_key,
+            api_base=deepseek_api_base,
         ),
     }
