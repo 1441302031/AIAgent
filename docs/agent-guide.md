@@ -1,4 +1,4 @@
-# Agent Guide
+﻿# Agent Guide
 
 ## Overview
 
@@ -59,16 +59,40 @@ Exit the REPL with:
 - `Ctrl+C`
 - `Ctrl+D`
 
-Run directly from source without installing:
+Run the env launcher directly from the checkout without installing:
 
 ```bash
-PYTHONPATH=src python -m aiagent "hello"
-PYTHONPATH=src python -m aiagent --repl
+python tools/run_with_env.py mock --prompt "hello"
+python tools/run_with_env.py mock --repl
+python tools/run_with_env.py --env .env.deepseek --prompt "hello"
 ```
+
+## Env 启动器与配置模板
+
+主运行时 `python -m aiagent` 仍然只读取当前进程里的环境变量，不会自动加载 `.env`。如果你想从模板文件启动，应使用 `tools/run_with_env.py` 先把配置注入子进程，再执行主运行时。
+
+### Provider 名称映射
+
+启动器会把 provider 名称映射到默认模板文件：
+
+- `mock` -> `.env.mock`
+- `deepseek` -> `.env.deepseek`
+- `moonshot` -> `.env.moonshot`
+
+### 启动器要点（整理版）
+
+- `mock` 对应 `.env.mock`
+- `deepseek` 对应 `.env.deepseek`
+- `moonshot` 对应 `.env.moonshot`
+- `--env` 可以直接覆盖默认模板映射，而且相对路径会按项目根目录解析，不是当前 `cwd`
+- `--prompt` 用于一次性请求，`--repl` 用于交互式会话，两者互斥
+- `--verbose` 只显示安全摘要，不打印敏感值
+- 真实配置建议保存在本地未跟踪的 env 文件中，不要写回模板文件
+
 
 ## Configuration
 
-Configuration is loaded from environment variables in `Settings`.
+Configuration is loaded from environment variables in `Settings` for the main runtime. If you launch through `tools/run_with_env.py`, that launcher is responsible for loading the chosen env file into the child process before `Settings` reads it.
 
 Required and commonly used variables:
 
@@ -164,6 +188,7 @@ python -m aiagent "hello"
 
 - `mock` 由当前 `Settings` 上下文派生为 `MockProviderConfig`
 - `moonshot` 由当前 `Settings` 上下文派生为 `MoonshotProviderConfig`
+- `deepseek` 由当前 `Settings` 上下文派生为 `DeepSeekProviderConfig`
 
 这一步只负责把配置整理好，不负责决定最终运行哪个 provider。
 
@@ -184,6 +209,7 @@ python -m aiagent "hello"
 
 - `mock`
 - `moonshot`
+- `deepseek`
 
 如果名称未注册，registry 会抛出配置错误。
 
@@ -235,6 +261,7 @@ Current providers:
 
 - `MockProvider`
 - `MoonshotProvider`
+- `DeepSeekProvider`
 
 This separation is important because later agent changes should not require rewriting transport code.
 

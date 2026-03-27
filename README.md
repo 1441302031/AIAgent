@@ -16,11 +16,12 @@ python -m aiagent --repl
 
 Note: the install command must include the trailing `.`. `python -m pip install -e` is incomplete and will not install this checkout.
 
-Or run directly from the checkout by setting `PYTHONPATH=src`:
+Or run the env launcher directly from the checkout without installing:
 
 ```bash
-PYTHONPATH=src python -m aiagent "hello"
-PYTHONPATH=src python -m aiagent --repl
+python tools/run_with_env.py mock --prompt "hello"
+python tools/run_with_env.py mock --repl
+python tools/run_with_env.py --env .env.deepseek --prompt "hello"
 ```
 
 ## Usage
@@ -38,6 +39,27 @@ python -m aiagent --repl
 ```
 
 Exit the REPL with `quit`, `exit`, `Ctrl+C`, or `Ctrl+D` / EOF.
+
+## Env 启动器
+
+如果你想从本地 `.env` 模板启动，而不是手动把配置写进当前 shell，请使用 `tools/run_with_env.py`。这个启动器负责读取模板文件、把环境变量注入子进程，然后再调用 `python -m aiagent`；主运行时本身不会自动加载 `.env`。
+
+常用命令：
+
+```bash
+python tools/run_with_env.py deepseek --prompt "你好"
+python tools/run_with_env.py deepseek --repl
+python tools/run_with_env.py --env .env.deepseek --prompt "你好"
+```
+
+模板文件说明：
+
+- `deepseek` 默认对应 `.env.deepseek`
+- `moonshot` 默认对应 `.env.moonshot`
+- `mock` 默认对应 `.env.mock`
+- 也可以用 `--env` 显式指定任意本地文件；相对路径会按项目根目录解析，而不是按当前 `cwd`
+
+模板文件只应该保留占位符和示例值，真实 key 不要直接写进模板文件。推荐把真实配置放到本地未跟踪的 env 文件里，例如复制一份模板后改成你自己的私有文件，并确保它不会被提交。
 
 ## Tests
 
