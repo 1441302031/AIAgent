@@ -1,95 +1,137 @@
 # aiagent
 
-`aiagent` is a minimal, library-first Python agent project with a thin command-line interface for one-shot prompts and an interactive REPL.
+`aiagent` 是一个 `library-first + thin CLI` 的 Python agent 项目，当前支持：
 
-## Install and run
+- one-shot CLI
+- REPL
+- streaming 输出
+- `mock / moonshot / deepseek` provider
+- minimal multi-agent
+- 本地文件上下文预处理
 
-This repository uses a `src` layout. For a fresh checkout, use one of these supported approaches:
+## 项目 SOP
 
-Install the project in editable mode, then run the module:
+本项目当前默认 SOP 为 **GSD**，旧流程不再作为项目默认流程。
+
+- 当前 SOP 文档见 [`docs/gsd/project-sop.md`](./docs/gsd/project-sop.md)
+- 仓库内不再新增旧流程目录文档
+
+## 安装与运行
+
+使用可编辑安装：
 
 ```bash
 python -m pip install -e .
+```
+
+安装命令必须包含末尾的 `.`，也就是 `python -m pip install -e .`。
+
+单次调用：
+
+```bash
 python -m aiagent "hello"
+```
+
+进入 REPL：
+
+```bash
 python -m aiagent --repl
 ```
 
-Note: the install command must include the trailing `.`. `python -m pip install -e` is incomplete and will not install this checkout.
+多 agent 模式：
 
-Or run the env launcher directly from the checkout without installing:
+```bash
+python -m aiagent --multi-agent "Please break this task into steps"
+python -m aiagent --repl --multi-agent
+```
+
+显示当前选中 agent 路径的流式输出：
+
+```bash
+python -m aiagent --multi-agent --show-subagents "Please break this task into steps"
+python -m aiagent --repl --multi-agent --show-subagents
+```
+
+退出 REPL：
+
+- `quit`
+- `exit`
+- `Ctrl+C`
+- `Ctrl+D`
+
+## env 启动器
+
+如果你不想手工设置一堆环境变量，可以直接使用启动器：
 
 ```bash
 python tools/run_with_env.py mock --prompt "hello"
 python tools/run_with_env.py mock --repl
+python tools/run_with_env.py deepseek --prompt "hello"
 python tools/run_with_env.py --env .env.deepseek --prompt "hello"
 ```
 
-## Usage
+模板映射：
 
-After `python -m pip install -e .`, run a single prompt:
+- `mock` -> `.env.mock`
+- `deepseek` -> `.env.deepseek`
+- `moonshot` -> `.env.moonshot`
 
-```bash
-python -m aiagent "hello"
-```
+真实密钥建议只保存在本地未跟踪的 env 文件中，不要提交进仓库。
 
-After `python -m pip install -e .`, start the interactive REPL:
+## 文件上下文预处理
 
-```bash
-python -m aiagent --repl
-```
+现在支持在发给模型前自动读取本地文件上下文。
 
-Exit the REPL with `quit`, `exit`, `Ctrl+C`, or `Ctrl+D` / EOF.
+支持两类输入：
 
-## Env 启动器
-
-如果你想从本地 `.env` 模板启动，而不是手动把配置写进当前 shell，请使用 `tools/run_with_env.py`。这个启动器负责读取模板文件、把环境变量注入子进程，然后再调用 `python -m aiagent`；主运行时本身不会自动加载 `.env`。
-
-常用命令：
+1. 显式语法
 
 ```bash
-python tools/run_with_env.py deepseek --prompt "你好"
-python tools/run_with_env.py deepseek --repl
-python tools/run_with_env.py --env .env.deepseek --prompt "你好"
+python -m aiagent "请分析 @file(src/aiagent/agents/assistant.py)"
+python -m aiagent "请概览 @dir(src/aiagent/agents)"
+python -m aiagent "请比较 @glob(src/aiagent/providers/*.py)"
 ```
 
-模板文件说明：
-
-- `deepseek` 默认对应 `.env.deepseek`
-- `moonshot` 默认对应 `.env.moonshot`
-- `mock` 默认对应 `.env.mock`
-- 也可以用 `--env` 显式指定任意本地文件；相对路径会按项目根目录解析，而不是按当前 `cwd`
-
-模板文件只应该保留占位符和示例值，真实 key 不要直接写进模板文件。推荐把真实配置放到本地未跟踪的 env 文件里，例如复制一份模板后改成你自己的私有文件，并确保它不会被提交。
-
-## Tests
-
-Run the full test suite with:
+2. 轻量自然语言路径识别
 
 ```bash
-python -B -m pytest -p no:cacheprovider -v
+python -m aiagent "请帮我分析 src/aiagent/agents/assistant.py 这个文件"
+python -m aiagent "请分析 src/aiagent/providers 目录下的所有文件"
+python -m aiagent "请比较 src/**/*.py 这些文件"
 ```
 
-## Configuration
+当前默认原则：
 
-通过环境变量配置运行时行为：
+- 优先按项目根目录解析相对路径
+- 支持绝对路径
+- 只读取安全的文本文件
+- 会忽略 `.git`、`__pycache__`、`node_modules`、`.venv`、`dist`、`build`
+- 目录和 glob 读取会受到文件数、单文件大小、总注入大小限制
 
-- 通用变量：
-  - `AIAGENT_PROVIDER`
-  - `AIAGENT_MODEL`
-  - `AIAGENT_TEMPERATURE`
-- Mock provider：
-  - `AIAGENT_MOCK_MODE`
-  - `AIAGENT_MOCK_RESPONSE`
-- Moonshot provider：
-  - `AIAGENT_API_KEY`
-  - `AIAGENT_API_BASE`
-- DeepSeek provider：
-  - `AIAGENT_DEEPSEEK_API_KEY`
-  - `AIAGENT_DEEPSEEK_API_BASE`
+## 配置
 
-其中 `AIAGENT_PROVIDER` 默认是 `mock`。当前 `moonshot` 与 `deepseek` 都使用各自专属的 API 配置，不会静默共用同一组 key。
+通用环境变量：
 
-### DeepSeek 配置示例
+- `AIAGENT_PROVIDER`
+- `AIAGENT_MODEL`
+- `AIAGENT_TEMPERATURE`
+
+Mock provider：
+
+- `AIAGENT_MOCK_MODE`
+- `AIAGENT_MOCK_RESPONSE`
+
+Moonshot provider：
+
+- `AIAGENT_API_KEY`
+- `AIAGENT_API_BASE`
+
+DeepSeek provider：
+
+- `AIAGENT_DEEPSEEK_API_KEY`
+- `AIAGENT_DEEPSEEK_API_BASE`
+
+DeepSeek 示例：
 
 ```bash
 AIAGENT_PROVIDER=deepseek
@@ -99,44 +141,30 @@ AIAGENT_DEEPSEEK_API_BASE=https://api.deepseek.com
 python -m aiagent "hello"
 ```
 
-如果你不想安装项目，也可以直接从源码目录运行：
+## 测试
+
+运行全量测试：
 
 ```bash
-PYTHONPATH=src AIAGENT_PROVIDER=deepseek AIAGENT_MODEL=deepseek-chat AIAGENT_DEEPSEEK_API_KEY=your-key AIAGENT_DEEPSEEK_API_BASE=https://api.deepseek.com python -m aiagent "hello"
+python -B -m pytest -p no:cacheprovider -v
 ```
 
-## Provider 架构
+## 更多文档
 
-当前的 provider 创建流程已经不再是单纯的硬编码分支，而是改成了 `registry + static selection` 的装配方式：
+- 完整使用与架构说明：[`docs/agent-guide.md`](./docs/agent-guide.md)
+- 项目 SOP：[`docs/gsd/project-sop.md`](./docs/gsd/project-sop.md)
 
-1. `Settings` 先把环境变量整理成运行时配置
-2. `Settings.provider_configs` 会基于当前 `Settings` 字段动态构造各 provider 对应的配置，每次访问都会重新计算
-3. `StaticSelectionPolicy` 只负责静态选择目标 provider
-4. `ProviderRegistry` 根据 provider 名称和配置实例化具体 provider
+## 排错
 
-默认 provider 仍然是 `mock`。当前这套流程只做静态选择，不包含动态切换、failover 或健康检查。
-
-## More Documentation
-
-For a fuller usage and architecture guide, including `subagent` / `multi-agent` expansion guidance, see `docs/agent-guide.md`.
-
-## Troubleshooting
-
-If `python -m aiagent` does not reflect the current checkout, verify which package Python is importing:
+如果 `python -m aiagent` 没有反映当前仓库代码，先检查 Python 实际导入的是哪个包：
 
 ```bash
 python -c "import aiagent; print(aiagent.__file__)"
 ```
 
-If the printed path points at an older checkout or worktree, reinstall from the current repository:
+如果路径指向旧目录或旧 worktree，重新安装：
 
 ```bash
 python -m pip uninstall -y aiagent
 python -m pip install -e .
-```
-
-Then verify again:
-
-```bash
-python -c "import aiagent; print(aiagent.__file__)"
 ```

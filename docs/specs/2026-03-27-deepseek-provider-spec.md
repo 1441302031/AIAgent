@@ -218,4 +218,4 @@ DeepSeekProvider 应沿用当前 provider 层错误语义：
 
 ## 后续工作
 
-如果本规范通过评审，下一步应进入 `writing-plans`，将 DeepSeek 接入拆成可执行的小步骤。若后续还要接入更多 OpenAI-compatible provider，应另写下一阶段规范，评估是否抽取通用兼容层，而不是在本规范中顺手扩展范围。
+如果本规范通过评审，下一步应按当前项目 GSD SOP 拆成可执行的小步骤。若后续还要接入更多 OpenAI-compatible provider，应另写下一阶段规范，评估是否抽取通用兼容层，而不是在本规范中顺手扩展范围。
